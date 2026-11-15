@@ -1,0 +1,80 @@
+/* ════════════════════════════════════════════════════════════════
+   数间（Heyawake）—— 游戏专用皮肤
+   ════════════════════════════════════════════════════════════════ */
+
+:root {
+  --hw-black: #2f2b26;
+  --hw-ink: #24231f;
+  --hw-board: #ece4d3;
+  --hw-board-line: #d4cbb9;
+}
+
+.board-svg .hw-board-bg {
+  fill: var(--hw-board);
+  stroke: var(--hw-board-line);
+  stroke-width: 1.5;
+}
+
+.board-svg .hw-cell {
+  stroke: rgba(36, 35, 31, 0.08);
+  stroke-width: 1;
+  pointer-events: none;
+}
+
+.board-svg .hw-cell.black {
+  fill: var(--hw-black);
+  stroke: rgba(0, 0, 0, 0.4);
+}
+
+.board-svg .hw-cell.bad {
+  opacity: 0.95;
+}
+
+.board-svg .hw-region-lines line {
+  stroke: #6f6759;
+  stroke-width: 3;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+
+.board-svg .hw-clue circle {
+  fill: #fffdf8;
+  stroke: #b7ae9a;
+  stroke-width: 1.2;
+}
+
+.board-svg .hw-clue text {
+  fill: var(--hw-ink);
+  font-family: var(--mono);
+  font-weight: 700;
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+}
+
+.board-svg .hw-error {
+  fill: rgba(194, 59, 46, 0.12);
+  stroke: var(--error);
+  stroke-width: 2.2;
+  pointer-events: none;
+}
+
+.board-svg .cell-hit {
+  pointer-events: all;
+}
+
+.board-svg .cell-hit:hover {
+  fill: rgba(31, 111, 92, 0.16);
+}
+
+.custom-cell.v-black {
+  background: var(--hw-black);
+  border-color: var(--hw-black);
+  color: #fffdf8;
+}
+
+.custom-cell.v-white {
+  background: #fff;
+  border-color: #b7ae9a;
+  color: var(--hw-ink);
+}
