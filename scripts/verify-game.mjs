@@ -115,12 +115,30 @@ if (afterUndo.changed !== 0) {
   console.error('FAIL: 撤销没有回到空盘')
 }
 
-const customDisabled = await page.locator('#btn-custom').isDisabled()
-console.log('custom disabled:', customDisabled)
-if (!customDisabled) {
+const customEnabled = !(await page.locator('#btn-custom').isDisabled())
+console.log('custom enabled:', customEnabled)
+if (!customEnabled) {
   failures++
-  console.error('FAIL: 数间 应关闭自定义题板')
+  console.error('FAIL: 数间 应支持自定义题板')
 }
+await page.click('#btn-custom')
+await page.waitForSelector('#custom-editor:not([hidden])')
+const customState = await page.evaluate(() => {
+  const cells = document.querySelectorAll('#custom-grid .custom-cell').length
+  const extras = document.querySelector('#custom-extras')
+  return {
+    cells,
+    extrasVisible: !!extras && !extras.hidden,
+    hasRegionInput: !!document.querySelector('#custom-region-no'),
+    hasCluesInput: !!document.querySelector('#custom-clues'),
+  }
+})
+console.log('custom editor:', customState)
+if (customState.cells === 0 || !customState.extrasVisible || !customState.hasRegionInput || !customState.hasCluesInput) {
+  failures++
+  console.error('FAIL: 数间 自定义题板（区域号输入 / 每区黑格数）没有正确挂载')
+}
+await page.click('#custom-close')
 
 await page.screenshot({ path: 'output/playwright/05-verified.png', fullPage: true })
 console.log('pageErrors:', errors)

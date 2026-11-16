@@ -56,11 +56,11 @@ const meta = {
 function readClueList(id: string, count: number, fallback: number[]): number[] {
   const el = document.getElementById(id) as HTMLTextAreaElement | null
   const raw = el?.value.trim() ?? ''
-  const vals = raw ? raw.split(/[\s,，]+/).filter(Boolean).map(Number) : []
+  const vals = raw ? raw.split(/[\s,，;；]+/).filter(Boolean).map(Number) : []
   const out: number[] = []
   for (let i = 0; i < count; i++) {
     const n = Number.isFinite(vals[i]) ? vals[i]! : fallback[i] ?? -1
-    out.push(Number.isInteger(n) && n >= -1 && n <= 99 ? n : -1)
+    out.push(Number.isInteger(n) && n >= -1 && n <= 999 ? n : -1)
   }
   return out
 }
@@ -71,30 +71,98 @@ function regionCountOf(regions: number[]): number {
   return count
 }
 
+/** 涂色可用的区域号上限（点击循环 1..40，直接输入可到 999） */
+const CYCLE_REGION_MAX = 40
+const DIRECT_REGION_MAX = 999
+
+/**
+ * 区域号录入面板：点选一格后输入区域号回车 / 点「应用」，比点击循环 40 次快得多，
+ * 也让 40×40 这类需要几十上百个区域的大题可以手画。
+ */
+const regionPanel = {
+  control: null as import('../core/types').CustomEditorControl | null,
+}
+
+function applyRegionNumber(clear: boolean): void {
+  const ctl = regionPanel.control
+  if (!ctl) return
+  const index = ctl.cursor()
+  const grid = ctl.grid()
+  if (index < 0 || index >= grid.length) return
+  const input = document.getElementById('custom-region-no') as HTMLInputElement | null
+  let value: number | null = null
+  if (!clear) {
+    const n = Math.floor(Number(input?.value))
+    if (!Number.isFinite(n) || n < 1 || n > DIRECT_REGION_MAX) {
+      ctl.message(`区域号需在 1..${DIRECT_REGION_MAX} 之间。`, 'bad')
+      return
+    }
+    value = n
+  }
+  grid[index] = value
+  ctl.setGrid(grid)
+  ctl.select(index)
+}
+
 const custom: CustomSupport = {
   mode: 'region',
-  valueCycle: [null, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
+  valueCycle: [
+    null,
+    ...Array.from({ length: CYCLE_REGION_MAX }, (_, i) => i + 1),
+  ],
   keyForDigit: (digit) => {
     if (digit === 0) return null
-    if (digit >= 1 && digit <= 20) return digit
+    if (digit >= 1 && digit <= 9) return digit
     return undefined
   },
   cellLabel: (v) => (v == null ? '' : String(v)),
   cellClass: (v) => (v == null ? '' : `r${v}`),
-  hint: '先用区域号涂出各房间，再在下方按区域号顺序输入每区的黑格数（-1 或空 = 无数字）。',
+  hint:
+    `先用区域号涂出各房间（点击循环 1–${CYCLE_REGION_MAX}，或用下方「区域号」输入框直接填 1–${DIRECT_REGION_MAX}），再在下方按区域号顺序输入每区的黑格数（-1 或空 = 无数字）。宽高各 5–40，支持非正方形。`,
 
   extras: {
     html: () => `
       <div class="custom-extras-grid">
+        <label>区域号（填给当前选中格，回车应用）
+          <span class="custom-region-row">
+            <input id="custom-region-no" type="number" min="1" max="${DIRECT_REGION_MAX}" step="1" placeholder="1–${DIRECT_REGION_MAX}" />
+            <button type="button" id="custom-region-apply">应用</button>
+            <button type="button" id="custom-region-clear">清除</button>
+          </span>
+        </label>
         <label>每区黑格数（按区域号 1,2,3… 顺序，空格或逗号分隔；-1/空=无数字）
           <textarea id="custom-clues" rows="2" spellcheck="false"></textarea>
         </label>
-        <div class="custom-hint">区域数由当前涂色自动统计；数字范围 0..区域内格数。</div>
+        <div class="custom-hint">区域数由当前涂色自动统计；数字范围 0..区域内格数。区域号可直接输入，不必点满循环。</div>
       </div>`,
-    mount: () => undefined,
+    mount: (panel, ctl) => {
+      regionPanel.control = ctl
+      const input = panel.querySelector<HTMLInputElement>('#custom-region-no')
+      // 聚焦输入框时回填当前格的区域号
+      input?.addEventListener('focus', () => {
+        const grid = ctl.grid()
+        const v = grid[ctl.cursor()]
+        input.value = typeof v === 'number' && v >= 1 ? String(v) : ''
+        input.select()
+      })
+      input?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault()
+          applyRegionNumber(false)
+        }
+      })
+      panel
+        .querySelector<HTMLButtonElement>('#custom-region-apply')
+        ?.addEventListener('click', () => applyRegionNumber(false))
+      panel
+        .querySelector<HTMLButtonElement>('#custom-region-clear')
+        ?.addEventListener('click', () => applyRegionNumber(true))
+    },
     reset: () => {
       const el = document.getElementById('custom-clues') as HTMLTextAreaElement | null
       if (el) el.value = ''
+      const no = document.getElementById('custom-region-no') as HTMLInputElement | null
+      if (no) no.value = ''
     },
     load: (p) => {
       const hp = p as HeyawakePuzzle
