@@ -72,9 +72,24 @@ export function asHeyaState(s: GameState): HeyawakeState {
 
 const BASE36 = '0123456789abcdefghijklmnopqrstuvwxyz'
 
+/**
+ * 编码题面：区域串 + '|' + 每区黑格数。
+ *
+ * 区域号编码兼容两种宽度：
+ *   - 区域数 ≤ 36：每格 1 个 base36 字符（旧格式，现有题库都是这种）；
+ *   - 区域数 > 36：每格 2 个 base36 字符（支持到 1296 个区域，识图导入的大题会用）。
+ * 解码时按区域串长度自动判断，旧数据不受影响。
+ */
 export function encodeBoard(regions: number[], clues: number[]): string {
+  let regionCount = 0
+  for (const r of regions) if (r + 1 > regionCount) regionCount = r + 1
+  const wide = regionCount > BASE36.length
   let out = ''
-  for (const r of regions) out += r >= 0 && r < BASE36.length ? BASE36[r]! : '0'
+  for (const r of regions) {
+    const v = r >= 0 && r < BASE36.length * BASE36.length ? r : 0
+    if (wide) out += BASE36[Math.floor(v / BASE36.length)]! + BASE36[v % BASE36.length]!
+    else out += BASE36[v]!
+  }
   out += '|'
   for (const c of clues) {
     const v = c < 0 ? 0 : c + 1
@@ -91,10 +106,19 @@ export function decodeBoard(
   const parts = text.split('|')
   if (parts.length !== 2) return null
   const regionText = parts[0]!
-  if (regionText.length !== expected) return null
+  const wide = regionText.length === expected * 2
+  if (!wide && regionText.length !== expected) return null
   const regions = new Array<number>(expected).fill(-1)
   for (let i = 0; i < expected; i++) {
-    const v = BASE36.indexOf(regionText[i]!.toLowerCase())
+    let v: number
+    if (wide) {
+      const hi = BASE36.indexOf(regionText[i * 2]!.toLowerCase())
+      const lo = BASE36.indexOf(regionText[i * 2 + 1]!.toLowerCase())
+      if (hi < 0 || lo < 0) return null
+      v = hi * BASE36.length + lo
+    } else {
+      v = BASE36.indexOf(regionText[i]!.toLowerCase())
+    }
     if (v < 0) return null
     regions[i] = v
   }

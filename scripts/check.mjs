@@ -46,8 +46,19 @@ for (const e of entries) {
   }
 
   const decoded = decodeBoard(e.board, size)
+  if (!decoded) {
+    console.error(`[check] ${e.id} 题面编码非法`)
+    errors++
+    continue
+  }
+  if (typeof e.solution !== 'string' || e.solution.length === 0) {
+    // 识图导入的大题可能没有参考解：只做结构校验，不参与唯一解审计
+    console.warn(`[check] ${e.id} 没有参考解（识图导入），跳过唯一解校验`)
+    warnings++
+    continue
+  }
   const solution = decodeCells(e.solution, size)
-  if (!decoded || !solution) {
+  if (!solution) {
     console.error(`[check] ${e.id} 题面/解编码非法`)
     errors++
     continue
